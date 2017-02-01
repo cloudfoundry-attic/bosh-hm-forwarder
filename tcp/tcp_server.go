@@ -1,11 +1,11 @@
 package tcp
 
 import (
-	"github.com/cloudfoundry/bosh-hm-forwarder/logging"
 	"bufio"
 	"fmt"
 	"net"
 	"time"
+	"log"
 )
 
 type messageStatistics struct {
@@ -38,7 +38,10 @@ func Open(port int, dataCh chan<- string) error {
 				msgStats.DeltaMessagesReceived++
 				msgStats.TotalMessagesReceived++
 			case <-ticker.C:
-				logging.Log.Info(fmt.Sprintf("Total Messages Received: %d, Recent Messages Received: %d", msgStats.TotalMessagesReceived, msgStats.DeltaMessagesReceived))
+				log.Printf("Total Messages Received: %d, Recent Messages Received: %d\n",
+					msgStats.TotalMessagesReceived,
+					msgStats.DeltaMessagesReceived,
+				)
 				msgStats.DeltaMessagesReceived = 0
 			}
 		}
@@ -61,7 +64,6 @@ func read(conn net.Conn, dataCh chan<- string, receiveChan chan interface{}) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
-		logging.Log.Debugf("Received message on TCP port: %s", message)
 		dataCh <- message
 		receiveChan <- true
 	}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/cloudfoundry/bosh-hm-forwarder/logging"
 	"encoding/base64"
 	"net/http"
 	"net/http/pprof"
@@ -11,8 +10,6 @@ import (
 )
 
 func CreateDebugEndpoints(router *mux.Router, debugUser, debugPassword string) {
-	logging.Log.Infof("Creating debug handlers")
-
 	router.HandleFunc("/debug/pprof", authenticate(http.HandlerFunc(pprof.Index), debugUser, debugPassword))
 	router.HandleFunc("/debug/pprof/cmdline", authenticate(http.HandlerFunc(pprof.Cmdline), debugUser, debugPassword))
 	router.HandleFunc("/debug/pprof/profile", authenticate(http.HandlerFunc(pprof.Profile), debugUser, debugPassword))

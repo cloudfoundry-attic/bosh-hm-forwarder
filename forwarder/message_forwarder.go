@@ -1,11 +1,10 @@
 package forwarder
 
 import (
-	"github.com/cloudfoundry/bosh-hm-forwarder/logging"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
+	"log"
 )
 
 type messageForwarder struct {
@@ -62,30 +61,28 @@ func (m *messageForwarder) process() {
 	for {
 		select {
 		case message = <-m.dataChan:
-			logging.Log.Debug("Received message: " + message)
 			tokens := strings.Split(message, " ")
 
 			if len(tokens) < 4 {
-				logging.Log.Debug("Less than 4 tokens so ignoring " + message)
 				continue
 			}
 
 			eventName := tokens[1]
 			secondsSinceEpoch, err := strconv.ParseInt(tokens[2], 10, 64)
 			if err != nil {
-				logging.Log.Errorf("Cannot parse \"%s\" : %v ", message, err)
+				log.Println("Cannot parse message: ", err)
 				continue
 			}
 			value, err := strconv.ParseFloat(tokens[3], 64)
 			if err != nil {
-				logging.Log.Errorf("Cannot parse \"%s\" %v : %v", message, value, err)
+				log.Println("Cannot parse message: ", err)
 				continue
 			}
 			keyValuePairs := buildMap(tokens, 4)
 
 			unit, ok := eventNameToUnit[eventName]
 			if !ok {
-				logging.Log.Errorf("EventName %s has no known conversion to unit type", eventName)
+				log.Printf("EventName %s has no known conversion to unit type\n", eventName)
 				unit = "Unknown"
 			}
 
@@ -100,14 +97,19 @@ func (m *messageForwarder) process() {
 			if err != nil {
 				messageStatistics.TotalErrors++
 				messageStatistics.DeltaErrors++
-				logging.Log.Error("Failed to send Value Metric", err)
+				log.Println("Failed to send Value Metric", err)
 			} else {
 				messageStatistics.TotalMessagesSent++
 				messageStatistics.DeltaMessagesSent++
-				logging.Log.Debug("Sent message to metron agent")
 			}
 		case <-ticker.C:
-			logging.Log.Info(fmt.Sprintf("Total Messages Sent: %d, Recent Messages Sent: %d, Total Errors: %d, Recent Errors: %d", messageStatistics.TotalMessagesSent, messageStatistics.DeltaMessagesSent, messageStatistics.TotalErrors, messageStatistics.DeltaErrors))
+			log.Printf("Total Messages Sent: %d, Recent Messages Sent: %d, Total Errors: %d, Recent Errors: %d\n",
+				messageStatistics.TotalMessagesSent,
+				messageStatistics.DeltaMessagesSent,
+				messageStatistics.TotalErrors,
+				messageStatistics.DeltaErrors,
+			)
+
 			messageStatistics.DeltaErrors = 0
 			messageStatistics.DeltaMessagesSent = 0
 		}

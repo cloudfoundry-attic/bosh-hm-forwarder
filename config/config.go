@@ -3,40 +3,34 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
-
-	"github.com/cloudfoundry/bosh-hm-forwarder/logging"
 	"errors"
+	"log"
 )
 
 type Config struct {
 	IncomingPort int
 	InfoPort     int
 	MetronPort   int
-	LogLevel     logging.LogLevel
 	DebugPort    int
-	Syslog       string
 }
 
 func Configuration(configFilePath string) *Config {
 	if configFilePath == "" {
-		logging.Log.Panic("Missing configuration file path.", nil)
+		log.Panicln("Missing configuration file path.")
 	}
 
 	configFileBytes, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
-		logging.Log.Panic("Error loading file: ", err)
+		log.Panicln("Error loading file:", err)
 	}
 
-	config := &Config{
-		LogLevel: logging.INFO,
-	}
-
+	config := &Config{}
 	if err := json.Unmarshal(configFileBytes, config); err != nil {
-		logging.Log.Panic("Error unmarshalling configuration", err)
+		log.Panicln("Error unmarshalling configuration:", err)
 	}
 
 	if err = config.validateProperties(); err != nil {
-		logging.Log.Panic("Error validating configuration", err)
+		log.Panicln("Error validating configuration:", err)
 	}
 
 	return config

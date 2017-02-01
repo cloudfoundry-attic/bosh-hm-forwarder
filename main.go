@@ -2,23 +2,18 @@ package main
 
 import (
 	"flag"
-
 	"strconv"
+	"fmt"
+	"net"
+	"net/http"
+	"log"
+	_ "net/http/pprof"
 
 	"github.com/cloudfoundry/bosh-hm-forwarder/config"
 	"github.com/cloudfoundry/bosh-hm-forwarder/forwarder"
 	"github.com/cloudfoundry/bosh-hm-forwarder/handlers"
 	"github.com/cloudfoundry/bosh-hm-forwarder/tcp"
 	"github.com/cloudfoundry/bosh-hm-forwarder/valuemetricsender"
-
-	"github.com/cloudfoundry/bosh-hm-forwarder/logging"
-
-	"fmt"
-	"net"
-	"net/http"
-
-	_ "net/http/pprof"
-
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/gorilla/mux"
 )
@@ -30,21 +25,16 @@ func main() {
 
 	conf := config.Configuration(*configFilePath)
 
-	if len(conf.Syslog) > 0 {
-		logging.SetSysLogger(conf.Syslog)
-	}
-	logging.SetLevel(conf.LogLevel)
-
 	dropsonde.Initialize("localhost:"+strconv.Itoa(conf.MetronPort), valuemetricsender.ForwarderOrigin)
 
 	go func() {
 		err := tcp.Open(conf.IncomingPort, forwarder.StartMessageForwarder(valuemetricsender.NewValueMetricSender()))
 		if err != nil {
-			logging.Log.Panic("Could not open the TCP port", err)
+			log.Panicln("Could not open the TCP port", err)
 		}
 	}()
 
-	logging.Log.Info("Bosh HM forwarder initialized")
+	log.Println("Bosh HM forwarder initialized")
 
 	infoHandler := handlers.NewInfoHandler()
 	router := mux.NewRouter()
@@ -54,18 +44,18 @@ func main() {
 		go pprofServer(conf.DebugPort)
 	}
 
-	logging.Log.Info(fmt.Sprintf("Starting Info Server on port %d", conf.InfoPort))
+	log.Println(fmt.Sprintf("Starting Info Server on port %d", conf.InfoPort))
 
 	err := http.ListenAndServe(net.JoinHostPort("", fmt.Sprintf("%d", conf.InfoPort)), router)
 	if err != nil {
-		logging.Log.Panic("Failed to start up alerter: ", err)
+		log.Panicln("Failed to start up alerter: ", err)
 	}
 }
 
 func pprofServer(debugPort int) {
-	logging.Log.Infof("Starting Pprof Server on %d", debugPort)
+	log.Printf("Starting Pprof Server on %d\n", debugPort)
 	err := http.ListenAndServe(net.JoinHostPort("localhost", fmt.Sprintf("%d", debugPort)), nil)
 	if err != nil {
-		logging.Log.Panic("Pprof Server Error", err)
+		log.Panicln("Pprof Server Error", err)
 	}
 }
